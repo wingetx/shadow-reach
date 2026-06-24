@@ -29,8 +29,13 @@
     "browser"
   ],
   "license": "MIT",
+  "author": "wingetx <winget.powershell@yahoo.com>",
+  "homepage": "https://github.com/wingetx/shadow-reach#readme",
+  "bugs": {
+    "url": "https://github.com/wingetx/shadow-reach/issues"
+  },
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "git+https://github.com/wingetx/shadow-reach.git"
   }
 }
