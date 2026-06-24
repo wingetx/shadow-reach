@@ -1,0 +1,36 @@
+{
+  "name": "shadow-reach",
+  "version": "0.1.0",
+  "description": "Let an agent's headless/CDP browser see and click elements inside Web Components (Shadow DOM). Driver-agnostic, dependency-free.",
+  "type": "module",
+  "main": "src/shadow_reach.js",
+  "exports": {
+    ".": "./src/shadow_reach.js"
+  },
+  "files": [
+    "src/",
+    "python/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node test/traversal.test.mjs"
+  },
+  "keywords": [
+    "shadow-dom",
+    "web-components",
+    "headless",
+    "cdp",
+    "playwright",
+    "puppeteer",
+    "selenium",
+    "automation",
+    "agent",
+    "browser"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  }
+}
