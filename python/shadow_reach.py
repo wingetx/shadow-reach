@@ -112,6 +112,37 @@ def click_js(selector: str) -> str:
     )
 
 
+def click_sequence_js(selectors, delay_ms: int = 400) -> str:
+    """JS that clicks several selectors in ONE round-trip, awaiting between.
+
+    Use for multi-step flows where a click opens a panel that then needs a
+    second click: doing it all in one evaluation means the panel can't vanish
+    (via re-navigation, a fresh tab, or a blur) between the clicks. The
+    ``delay_ms`` beat lets a reactive panel mount its next control.
+
+    Returns a Promise, so AWAIT it: CDP ``Runtime.evaluate`` with
+    ``awaitPromise=True``; Selenium ``execute_async_script`` (or set
+    ``delay_ms=0`` and use plain ``execute_script``); Playwright awaits
+    automatically. Resolves to a JSON array: ["ok: sel", …] / ["not found: sel"].
+    """
+    return DEEP_JS + (
+        "(async function(){"
+        f"  var sels = {json.dumps(list(selectors))};"
+        f"  var delay = {int(delay_ms)};"
+        "  var out = [];"
+        "  for (var i=0;i<sels.length;i++){"
+        "    var el = __srResolve(sels[i]);"
+        "    if (!el){ out.push('not found: '+sels[i]); break; }"
+        "    el.scrollIntoView({block:'center'});"
+        "    el.click();"
+        "    out.push('ok: '+sels[i]);"
+        "    if (i < sels.length-1) await new Promise(function(r){ setTimeout(r, delay); });"
+        "  }"
+        "  return JSON.stringify(out);"
+        "})()"
+    )
+
+
 def type_js(selector: str, text: str) -> str:
     """JS that fills an input/textarea OR a contenteditable editor."""
     return DEEP_JS + (

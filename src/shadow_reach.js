@@ -105,6 +105,38 @@ export function clickJS(selector){
 })()`;
 }
 
+// ── Click sequence: several clicks in ONE round-trip. ───────────────────────
+// Why this exists: a multi-step flow (a panel opens, then needs a second click
+// inside it) breaks if each click is a separate call AND your driver opens a
+// fresh tab / re-navigates per action — the panel from click #1 is gone before
+// click #2. It also breaks if the panel closes on blur. Doing the whole
+// sequence inside a single evaluation sidesteps both: the page never settles,
+// re-navigates, or blurs between the clicks. The `delayMs` beat lets a
+// reactive panel mount its next control before we reach for it.
+//
+// Returns a Promise (it awaits between clicks), so AWAIT IT in your driver:
+//   • Playwright  : await page.evaluate(clickSequenceJS([...]))       (auto)
+//   • CDP         : Runtime.evaluate with { awaitPromise: true }
+//   • Selenium    : driver.execute_async_script — or just raise delayMs to 0
+// Resolves to a JSON string: ["ok: sel", …] or ["not found: sel"] on the miss.
+export function clickSequenceJS(selectors, delayMs = 400){
+  return DEEP_JS + `
+(async function(){
+  var sels = ${JSON.stringify(selectors)};
+  var delay = ${Number(delayMs) || 0};
+  var out = [];
+  for (var i=0;i<sels.length;i++){
+    var el = __srResolve(sels[i]);
+    if (!el){ out.push('not found: '+sels[i]); break; }
+    el.scrollIntoView({block:'center'});
+    el.click();
+    out.push('ok: '+sels[i]);
+    if (i < sels.length-1) await new Promise(function(r){ setTimeout(r, delay); });
+  }
+  return JSON.stringify(out);
+})()`;
+}
+
 // ── Type/fill: handles <input>/<textarea> AND contenteditable editors. ──────
 // Many composers are contenteditable divs — setting .value is a silent no-op
 // on those, so branch on isContentEditable. Native input/change events are

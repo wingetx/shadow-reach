@@ -44,6 +44,7 @@ selectors against all of them. shadow-reach gives you four drop-in JS builders:
 |----------------|----------------------------------|-------------------------------------------------|
 | `scan`         | your interactables scanner       | pierces shadow DOM; returns **durable** selectors |
 | `click`        | `document.querySelector(s).click()` | pierces shadow DOM; scrolls into view first  |
+| `clickSequence`| N separate click calls           | several clicks in **one** round-trip (multi-step panels) |
 | `type` / fill  | `el.value = text`                | also handles **contenteditable** composers      |
 | `submit`       | `form.submit()`                  | uses **`requestSubmit()`** so the JS handler runs |
 
@@ -168,6 +169,56 @@ clickJS('text=New Post')     // re-found by label on THIS call, post-rerender
 `scan` therefore hands back `text=` selectors for labeled, id-less controls by
 default, and the action builders accept `text=` from you directly. Plain CSS
 selectors still work (deep-pierced) whenever you have a stable one.
+
+## Multi-step flows (panels that open, then need another click)
+
+A click that opens a panel, followed by a click *inside* that panel, is the
+classic place automation falls apart — and the failure has **two** independent
+causes:
+
+1. **Lifecycle.** If your driver opens a fresh tab (or re-navigates) per action,
+   the panel from click #1 is destroyed before click #2 ever runs. Two separate
+   calls can't share it.
+2. **Blur.** Many panels close on `blur`/`focusout`. A headless or
+   non-foreground tab counts as unfocused, so the panel dismisses itself the
+   instant your click returns.
+
+Both vanish if you do the whole sequence **in one evaluation**:
+
+```js
+import { clickSequenceJS } from './src/shadow_reach.js';
+// click "Connect Agent", wait 400ms for the panel to mount, click "Generate Keypair"
+await page.evaluate(clickSequenceJS(['text=Connect Agent', 'text=Generate Keypair'], 400));
+```
+
+The page never settles, re-navigates, or blurs between the clicks, and the delay
+lets a reactive panel render its next control. `clickSequence` returns a
+**Promise** (it awaits between steps) — so await it:
+
+| Driver      | How to await                                             |
+|-------------|----------------------------------------------------------|
+| Playwright  | `await page.evaluate(...)` — automatic                   |
+| Puppeteer   | `await page.evaluate(...)` — automatic                   |
+| CDP         | `Runtime.evaluate` with `{ awaitPromise: true }`         |
+| Selenium    | `driver.execute_async_script(...)`, or set `delay_ms=0` and use `execute_script` |
+
+### Also worth setting: focus emulation
+
+For panels that close on blur, tell the browser the page is *always* focused, so
+they can't dismiss themselves between actions at all:
+
+```python
+# CDP, once per session:
+cdp.send("Emulation.setFocusEmulationEnabled", {"enabled": True})
+```
+
+```js
+// Playwright/Puppeteer: bring the page forward before acting
+await page.bringToFront();
+```
+
+This is driver-level (not something injected JS can do), so it lives in your
+glue code — but it pairs naturally with `clickSequence` for rock-solid panels.
 
 ## Limitation: closed shadow roots
 

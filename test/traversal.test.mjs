@@ -6,7 +6,7 @@
 //
 //   run:  node test/traversal.test.mjs   (or: npm test)
 
-import { SCAN_JS, clickJS } from '../src/shadow_reach.js';
+import { SCAN_JS, clickJS, clickSequenceJS } from '../src/shadow_reach.js';
 
 let passed = 0, failed = 0;
 function ok(name, cond) {
@@ -86,6 +86,19 @@ function find(root, pred) {
   }
   return false;
 }
+
+// 4) clickSequence clicks both controls, in order, in one (awaited) call
+setDoc((() => {
+  const a = makeEl('button', { text: 'Connect Agent' });
+  const b = makeEl('button', { text: 'Generate Keypair' });
+  return makeEl('html', { kids: [makeEl('panel', { shadowRoot: makeEl('root', { kids: [a, b] }) })] });
+})());
+const seqOut = JSON.parse(await run(clickSequenceJS(['text=Connect Agent', 'text=Generate Keypair'], 5)));
+ok('clickSequence reports both clicks ok',
+   seqOut.length === 2 && seqOut.every(s => s.startsWith('ok:')));
+ok('clickSequence actually clicked both buttons',
+   find(document, e => e._clicked && e._text === 'Connect Agent') &&
+   find(document, e => e._clicked && e._text === 'Generate Keypair'));
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
